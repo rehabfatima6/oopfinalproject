@@ -53,3 +53,26 @@ int PA::requiredCredibility() const { return 35; }
 Cook::Cook(const string& n, const string& r, const string& nat) : HouseHelp(n, r, nat) {}
 Guard::Guard(const string& n, const string& r, const string& nat) : HouseHelp(n, r, nat) {}
 Servant::Servant(const string& n, const string& r, const string& nat) : HouseHelp(n, r, nat) {}
+
+// ================= GameEngine =================
+GameEngine* GameEngine::instance = NULL;
+
+GameEngine::GameEngine()
+    : state(STATE_MENU), maxTurns(25), startingCredibility(100), wrongTurnPenalty(5), wrongWordPenalty(10),
+      winCondition("Accuse_Correct_Culprit"), loseCondition("Credibility_Zero_Or_Turns_Exhausted"),
+      leaderBoard(NULL), culprit(NULL), solved1(false), solved2(false) {}
+
+GameEngine::~GameEngine() { clearCharacters(); }
+
+void GameEngine::attachLeaderBoard(LeaderBoard* b) { leaderBoard = b; }
+bool GameEngine::isFinished() const { return state == STATE_EXIT; }
+
+GameEngine& GameEngine::getInstance() {
+    if (instance == NULL) instance = new GameEngine();
+    return *instance;
+}
+
+void GameEngine::destroyInstance() {
+    delete instance;
+    instance = NULL;
+}

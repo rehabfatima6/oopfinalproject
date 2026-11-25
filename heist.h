@@ -78,3 +78,52 @@ public:
 class Cook : public HouseHelp { public: Cook(const string& n, const string& r, const string& nat); };
 class Guard : public HouseHelp { public: Guard(const string& n, const string& r, const string& nat); };
 class Servant : public HouseHelp { public: Servant(const string& n, const string& r, const string& nat); };
+
+// ================= MODULE 12: GameEngine (Singleton) =================
+// Composition: Detective, Cottage, Scrabble, characters.  Association: LeaderBoard.
+class GameEngine {
+    static GameEngine* instance;
+    GameState state;
+    int maxTurns;
+    int startingCredibility;
+    int wrongTurnPenalty;
+    int wrongWordPenalty;
+    string winCondition;
+    string loseCondition;
+    Detective detective;
+    Cottage cottage;
+    Scrabble scrabble;
+    DynamicArray<Character*> characters;        // heap objects owned by the engine
+    LeaderBoard* leaderBoard;
+    Character* culprit;
+    string culpritRole;
+    string word1;
+    string word2;
+    bool solved1;
+    bool solved2;
+
+    GameEngine();
+    GameEngine(const GameEngine&);              // copying is not allowed (singleton)
+    GameEngine& operator=(const GameEngine&);
+    ~GameEngine();
+    void clearCharacters();
+    Character* createCharacter(const string& name, const string& role, const string& nat);
+    void loadRules();
+    void loadGameData();
+    void runMainMenu();
+    void startNewGame();
+    void runGameTurn();
+    void collect(bool& done, const string& name, const Clue& c, int needCred, const string& past, const string& action);
+    void interviewPerson();
+    void formWord();
+    void accuseSuspect();
+    void concludeGame();
+public:
+    static GameEngine& getInstance();
+    static void destroyInstance();
+    void attachLeaderBoard(LeaderBoard* b);
+    void showWelcome() const;
+    void step();
+    void handleException(const GameException& e);
+    bool isFinished() const;
+};

@@ -1,50 +1,24 @@
-﻿# THE LOCKER HEIST
+﻿# The Locker Heist
 
-### A Console-Based Detective Mystery Game
+A console detective game built with Object-Oriented Programming in C++.
 
-**Object-Oriented Programming Semester Project**
-
-## Team Members
-
-1. Kashaf Fatima — 25F-3000
-2. Noor Ul Eiman — 25F-3039
-
-## About the Project
-
-The Locker Heist is a console-based detective mystery game developed in C++. Players take the role of a detective and investigate a mysterious case by collecting clues, interviewing characters, searching locations and identifying the culprit.
-
-## Main Features
-
-- Character hierarchy and inheritance
-- Detective investigation system
-- Clue collection and word formation
-- Location searching
-- Exception handling
-- Leaderboard and score tracking
-- File handling
-
-## Technologies Used
-
-- C++
-- Object-Oriented Programming
-- Visual Studio
-- Git and GitHub
+## Team
+- Rehab Fatima
+- Fatima Saqib
 
 ## Build and Run
+1. Open the project in Visual Studio (C++ Console Project) with `heist.h`, `heist.cpp` and `main.cpp`.
+2. Keep `rules.txt`, `clue.txt`, `locations.txt`, `characters.txt`, `about.txt` and the `leader/` folder (with `scoreBoard.txt`) in the project folder (the one that contains `heist.cpp`).
+3. Press `Ctrl + F5` to run the program.
 
-1. Open the project in Visual Studio.
-2. Keep all required text files and the leader folder in the project directory.
-3. Build the C++ project.
-4. Run using Ctrl + F5.
+## Project Structure
+- `heist.h` - Declarations (enums, structs, exceptions, template and classes).
+- `heist.cpp` - Implementation.
+- `main.cpp` - Driver program that catches all `GameException` objects.
+- `*.txt`, `leader/scoreBoard.txt` - Game data and persistent score board.
 
-## Project Files
-
-- `heist.h` — Class declarations.
-- `heist.cpp` — Class implementations.
-- `main.cpp` — Main program.
-- `characters.txt` — Character information.
-- `clue.txt` — Clue data.
-- `locations.txt` — Location information.
-- `rules.txt` — Game rules.
-- `about.txt` — Project overview.
-- `leader/scoreBoard.txt` — Leaderboard records.
+## Known Limitations
+- The screen is cleared using `system("cls")`, which works on Windows consoles only.
+- Quitting a game midway is not recorded on the score board.
+- `leader/scoreBoard.txt` must already exist; the program cannot create folders.
+- Character data is read from `characters.txt`; there is no in-game editor.

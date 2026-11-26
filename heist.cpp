@@ -336,7 +336,34 @@ TileRack TileRack::operator+(const TileRack& o) const {                  // merg
     return merged;
 }
 
+// ================= LeaderBoard =================
+LeaderBoard::LeaderBoard(const string& path) : filePath(path) {}
 
+void LeaderBoard::addScore(const string& name, const string& result, int cred, int turnsLeft, const string& culprit) const {
+    ifstream check(filePath.c_str());
+    if (!check)
+        throw FileException(filePath + " not found (the 'leader' folder and file must exist).");
+    check.close();
+
+    ofstream out(filePath.c_str(), ios::app);
+    if (!out)
+        throw FileException("Cannot write to " + filePath + ".");
+    time_t now = time(0);
+    tm* t = localtime(&now);
+    int day = t->tm_mday, month = t->tm_mon + 1, year = (t->tm_year + 1900) % 100;
+    out << name << "|" << result << "|" << cred << "|" << (turnsLeft < 10 ? "0" : "") << turnsLeft << "|" << culprit << "|"
+        << (day < 10 ? "0" : "") << day << "-" << (month < 10 ? "0" : "") << month << "-" << (year < 10 ? "0" : "") << year << "\n";
+}
+
+void LeaderBoard::display() const {
+    ifstream in;
+    openFile(in, filePath, true);
+    cout << "\n=========== LEADER / SCORE BOARD ===========\n";
+    cout << "Detective | Result | Credibility | Turns_Left | Culprit | Date\n";
+    string f[MAX_FIELDS];
+    while (readRow(in, f, 6, filePath))
+        cout << f[0] << " | " << f[1] << " | " << f[2] << " | " << f[3] << " | " << f[4] << " | " << f[5] << "\n";
+}
 
 // ================= GameEngine =================
 GameEngine* GameEngine::instance = NULL;
@@ -360,7 +387,150 @@ void GameEngine::destroyInstance() {
     delete instance;
     instance = NULL;
 }
+void GameEngine::clearCharacters() {            // free every character created with new
+    for (int i = 0; i < characters.size(); i++) delete characters[i];
+    characters.clear();
+    culprit = NULL;
+}
 
+Character* GameEngine::createCharacter(const string& name, const string& role, const string& nat) {
+    if (role == "Victim") return new Victim(name, role, nat);
+    if (role == "Cook") return new Cook(name, role, nat);
+    if (role == "Guard") return new Guard(name, role, nat);
+    if (role == "Servant") return new Servant(name, role, nat);
+    if (role == "Partner_1" || role == "Partner_2") return new Partner(name, role, nat);
+    if (role == "PA") return new PA(name, role, nat);
+    if (role == "Child") return new Child(name, role, nat);
+    throw FileException("characters.txt has an unknown role: " + role);
+}
+
+// Reads rules.txt; falls back to default values if it is missing or corrupt.
+void GameEngine::loadRules() {
+    maxTurns = 25; startingCredibility = 100; wrongTurnPenalty = 5; wrongWordPenalty = 10;
+    winCondition = "Accuse_Correct_Culprit"; loseCondition = "Credibility_Zero_Or_Turns_Exhausted";
+
+    ifstream in("rules.txt");
+    if (!in) { cout << "[!] rules.txt missing - using default rules.\n"; return; }
+    int turns = maxTurns, cred = startingCredibility, turnPen = wrongTurnPenalty, wordPen = wrongWordPenalty;
+    string win = winCondition, lose = loseCondition, line;
+    while (getline(in, line)) {
+        if (line.size() > 0 && line[line.size() - 1] == '\r') line.erase(line.size() - 1, 1);
+        if (line.size() == 0) continue;
+        int eq = -1;
+        for (int i = 0; i < (int)line.size() && eq == -1; i++) if (line[i] == '=') eq = i;
+        if (eq == -1) { cout << "[!] rules.txt corrupted - using default rules.\n"; return; }
+        string key = "", value = "";
+        for (int i = 0; i < eq; i++) key += line[i];
+        for (int i = eq + 1; i < (int)line.size(); i++) value += line[i];
+        int number = textToInt(value);
+        if (number < 0) number = -number;       // penalties are written as negative numbers
+        if (key == "Max_Turns") turns = number;
+        else if (key == "Starting_Credibility") cred = number;
+        else if (key == "Every_Wrong_Turn") turnPen = number;
+        else if (key == "Every_Wrong_Word") wordPen = number;
+        else if (key == "Win_Condition") win = value;
+        else if (key == "Lose_Condition") lose = value;
+    }
+    if (turns < 1 || cred < 1) { cout << "[!] rules.txt has invalid values - using default rules.\n"; return; }
+    maxTurns = turns; startingCredibility = cred; wrongTurnPenalty = turnPen; wrongWordPenalty = wordPen;
+    winCondition = win; loseCondition = lose;
+}
+
+// Reads characters.txt, clue.txt and locations.txt and prepares a new game.
+void GameEngine::loadGameData() {
+    clearCharacters();
+    cottage.clearLocations();
+    solved1 = false; solved2 = false;
+    string f[MAX_FIELDS];
+    string rawLines[8];                         // keeps each character line so letters can be read later
+
+    ifstream cf;
+    openFile(cf, "characters.txt", true);
+    while (readRow(cf, f, 12, "characters.txt")) {
+        if (characters.size() >= 8)
+            throw FileException("characters.txt must list exactly 8 people.");
+        Character* made = createCharacter(f[0], fixRole(f[1]), f[2]);
+        characters.add(made);
+        string joined = "";
+        for (int i = 0; i < MAX_FIELDS; i++) joined += f[i] + "|";
+        rawLines[characters.size() - 1] = joined;
+    }
+    if (characters.size() != 8)
+        throw FileException("characters.txt must list exactly 8 people.");
+
+    int suspects = 0;                           // choose the culprit randomly among the 7 suspects
+    for (int i = 0; i < characters.size(); i++) if (characters[i]->isSuspect()) suspects++;
+    if (suspects != 7)
+        throw FileException("characters.txt needs 7 suspects and 1 victim.");
+    int pick = rand() % 7, seen = 0;
+    for (int i = 0; i < characters.size(); i++) {
+        if (characters[i]->isSuspect()) {
+            if (seen == pick) culprit = characters[i];
+            seen++;
+        }
+    }
+    culprit->isCulprit = true;
+    culpritRole = culprit->characterRole;
+    int col = roleColumn(culpritRole);
+    if (col < 0)
+        throw FileException("Unknown culprit role: " + culpritRole);
+
+    ifstream kf;                                // the two words that match the culprit's role
+    openFile(kf, "clue.txt", true);
+    bool found = false;
+    while (readRow(kf, f, 3, "clue.txt")) {
+        if (fixRole(f[0]) == culpritRole) { word1 = toUpperString(f[1]); word2 = toUpperString(f[2]); found = true; }
+    }
+    if (!found)
+        throw FileException("clue.txt has no profile for " + culpritRole + ".");
+    scrabble.setTargets(word1, word2);
+
+    for (int i = 0; i < characters.size(); i++) {   // letter and position of every person (Word 2)
+        string raw = rawLines[i], cell = "";
+        int index = 0;
+        for (int k = 0; k < (int)raw.size(); k++) {
+            if (raw[k] != '|') { cell += raw[k]; continue; }
+            if (index == 3) characters[i]->boardPosChar = textToInt(cell);
+            if (index == 4 + col && cell.size() > 0) characters[i]->letterClueChar = toUpperChar(cell[0]);
+            index++;
+            cell = "";
+        }
+    }
+
+    ifstream lf;                                // letter and position of every location (Word 1)
+    openFile(lf, "locations.txt", true);
+    while (readRow(lf, f, 9, "locations.txt")) {
+        Location l;
+        l.locName = f[0];
+        l.boardPosLoc = textToInt(f[1]);
+        l.letterClueLoc = (f[2 + col].size() > 0) ? toUpperChar(f[2 + col][0]) : ' ';
+        l.locRow = WORD_1;
+        l.locSearchFlag = false;
+        cottage.addLocation(l);
+    }
+    if (cottage.getLocationCount() != 7)
+        throw FileException("locations.txt must list exactly 7 locations.");
+}
+
+void GameEngine::startNewGame() {
+    cout << "\n============ THE LOCKER HEIST - NEW GAME ============\n";
+    string name = readLine("Enter detective name: ");
+    if (name.size() == 0)
+        throw InvalidInputException("Name cannot be empty.");
+    bool hasSpace = false;
+    for (int i = 0; i < (int)name.size(); i++) if (name[i] == ' ') hasSpace = true;
+    if (hasSpace) {                             // spaces are replaced by '_' or '.'
+        string r = readLine("Name contains spaces. Replace them with '_' or '.' ? Enter _ or . : ");
+        if (r != "_" && r != ".")
+            throw InvalidInputException("Please choose '_' or '.'.");
+        for (int i = 0; i < (int)name.size(); i++) if (name[i] == ' ') name[i] = r[0];
+    }
+    loadRules();
+    loadGameData();
+    detective = Detective(name, startingCredibility);
+    state = STATE_PLAYING;
+    cout << "A culprit has been secretly chosen. The game begins!\n";
+}
 void GameEngine::runGameTurn() {
     cout << "\n";
     detective.display();

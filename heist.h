@@ -235,7 +235,14 @@ public:
     void collectClue(const Clue& c);
     const TileRack& getRack(WordRow r) const;
 };
-
+// ================= MODULE 6: Leader / Score board =================
+class LeaderBoard {
+    string filePath;
+public:
+    LeaderBoard(const string& path);
+    void addScore(const string& name, const string& result, int cred, int turnsLeft, const string& culprit) const;
+    void display() const;
+};
 // ================= MODULE 12: GameEngine (Singleton) =================
 // Composition: Detective, Cottage, Scrabble, characters.  Association: LeaderBoard.
 class GameEngine {

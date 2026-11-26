@@ -360,3 +360,63 @@ void GameEngine::destroyInstance() {
     delete instance;
     instance = NULL;
 }
+
+void GameEngine::runGameTurn() {
+    cout << "\n";
+    detective.display();
+    cout << "Rack Word 1: "; detective.getRack(WORD_1).display();
+    cout << "\nRack Word 2: "; detective.getRack(WORD_2).display();
+    cout << "\n\n==== Game Menu ====\n";
+    cout << "[1] Visit a Location\n[2] Interview a Person\n[3] View Scrabble Board (free - no turn)\n";
+    cout << "[4] Form a Word\n[5] Accuse a Suspect\n[6] Quit\n";
+    cout << "--- TURN " << detective.getTurns() + 1 << " ---\n";
+    int choice = readInt("Choice: ", 1, 6);
+    if (choice == 1) {
+        cottage.displayLocations();
+        int pick = readInt("Pick: ", 1, cottage.getLocationCount());
+        int i = pick - 1;
+        collect(cottage.at(i).locSearchFlag, cottage.at(i).locName, cottage.getClue(i), 0, "searched", "Search");
+    }
+    else if (choice == 2) interviewPerson();
+    else if (choice == 3) {
+        cout << "\n" << scrabble;
+    }
+    else if (choice == 4) formWord();
+    else if (choice == 5) accuseSuspect();
+    else { cout << "You abandon the case. (Quit games are not recorded.)\n"; state = STATE_MENU; }
+}
+
+// Same steps for a location and for a person: first time = collect and place the letter,
+// later = ask and show the letter again. 'done' is the searched/interviewed flag.
+void GameEngine::collect(bool& done, const string& name, const Clue& c, int needCred, const string& past, const string& action) {
+    int wordNo = (c.clueRow == WORD_1) ? 1 : 2;
+    if (!done) {
+        cout << "You have NOT " << past << " " << name << " yet.\n";
+        if (!readYesNo(action + "? (Y/N): ")) return;
+        if (detective.getCredibility() < needCred)
+            throw LowCredibilityException(name + " refuses to talk: needs credibility of at least " + intToText(needCred) + ".", wrongTurnPenalty);
+        detective.collectClue(c);
+        scrabble.placeClue(c);
+        done = true;
+        cout << "Letter " << c.clueLetter << " collected at position " << c.cluePosition << " of Word " << wordNo << ".\n";
+        cout << "Letter has been placed.\n";
+    } else {
+        cout << "You have already " << past << " " << name << ".\n";
+        if (!readYesNo(action + " again? (Y/N): ")) return;
+        cout << "Letter " << c.clueLetter << " is at position " << c.cluePosition << " of Word " << wordNo << ".\n";
+    }
+    detective.incrementTurns();
+}
+
+void GameEngine::interviewPerson() {
+    cout << "\n===== Character Menu =====\n";
+    for (int i = 0; i < characters.size(); i++) {
+        cout << "[" << i + 1 << "] " << *characters[i] << " - ";
+        if (characters[i]->interviewed) cout << "Interviewed\n";
+        else cout << "NOT Interviewed\n";
+    }
+    int pick = readInt("Pick: ", 1, characters.size());
+    Character* p = characters[pick - 1];
+    // requiredCredibility() is virtual: each class gives its own limit (polymorphism)
+    collect(p->interviewed, p->characterName, p->getClue(), p->requiredCredibility(), "interviewed", "Interview");
+}

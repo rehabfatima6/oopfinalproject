@@ -1,3 +1,96 @@
+// ================= MODULE 7: Exception classes =================
+// penalty = credibility lost, usesTurn = the mistake also costs a turn
+class GameException {
+    string type;
+    string message;
+    int penalty;
+    bool usesTurn;
+public:
+    GameException(const string& t, const string& m, int p, bool u);
+    virtual ~GameException();
+    string getType() const;
+    string getMessage() const;
+    int getPenalty() const;
+    bool consumesTurn() const;
+};
+class InvalidInputException : public GameException { public: InvalidInputException(const string& m); };
+class InvalidPositionException : public GameException { public: InvalidPositionException(const string& m); };
+class SlotFilledException : public GameException { public: SlotFilledException(const string& m); };
+class WrongLetterException : public GameException { public: WrongLetterException(const string& m); };
+class RackFullException : public GameException { public: RackFullException(const string& m); };
+class RackEmptyException : public GameException { public: RackEmptyException(const string& m); };
+class WordNotReadyException : public GameException { public: WordNotReadyException(const string& m); };
+class FileException : public GameException { public: FileException(const string& m); };
+class InvalidWordException : public GameException { public: InvalidWordException(const string& m, int p); };
+class LowCredibilityException : public GameException { public: LowCredibilityException(const string& m, int p); };
+class WrongAccusationException : public GameException { public: WrongAccusationException(const string& m, int p); };
+
+// ================= MODULE 8: Template DynamicArray<T> =================
+// Generic array on the heap with copy constructor, assignment operator and destructor (deep copy).
+template <typename T>
+class DynamicArray {
+    T* data;
+    int capacity;
+    int count;
+    void grow(int minCapacity) {
+        int newCap = capacity * 2;
+        if (newCap < minCapacity) newCap = minCapacity;
+        T* bigger = new T[newCap];
+        for (int i = 0; i < count; i++) bigger[i] = data[i];
+        delete[] data;
+        data = bigger;
+        capacity = newCap;
+    }
+public:
+    DynamicArray(int cap = 4) {
+        capacity = (cap < 1) ? 1 : cap;
+        count = 0;
+        data = new T[capacity];
+    }
+    DynamicArray(const DynamicArray& other) {
+        capacity = other.capacity;
+        count = other.count;
+        data = new T[capacity];
+        for (int i = 0; i < count; i++) data[i] = other.data[i];
+    }
+    DynamicArray& operator=(const DynamicArray& other) {
+        if (this != &other) {
+            delete[] data;
+            capacity = other.capacity;
+            count = other.count;
+            data = new T[capacity];
+            for (int i = 0; i < count; i++) data[i] = other.data[i];
+        }
+        return *this;
+    }
+    ~DynamicArray() { delete[] data; }
+
+    void add(const T& item) { if (count == capacity) grow(count + 1); data[count] = item; count++; }
+    void resize(int n) { if (n > capacity) grow(n); for (int i = count; i < n; i++) data[i] = T(); count = n; }
+    void clear() { count = 0; }
+    int size() const { return count; }
+    T& operator[](int i) { if (i < 0 || i >= count) throw InvalidPositionException("Index is outside the array."); return data[i]; }
+    const T& operator[](int i) const { if (i < 0 || i >= count) throw InvalidPositionException("Index is outside the array."); return data[i]; }
+};
+
+// ================= Helper functions =================
+const int MAX_FIELDS = 12;                      // most columns any data file row can have
+char toUpperChar(char c);
+string toUpperString(string s);
+string intToText(int n);
+int textToInt(const string& s);
+string readLine(const string& prompt);
+int readInt(const string& prompt, int low, int high);
+bool readYesNo(const string& prompt);
+void openFile(ifstream& in, const string& name, bool skipHeader);
+bool readRow(ifstream& in, string fields[], int minColumns, const string& fileName);
+string fixRole(string role);
+int roleColumn(const string& role);
+
+// ================= MODULE 11: Operator overloading on structs =================
+bool operator==(const Clue& a, const Clue& b);  // compares letter, position, row
+ostream& operator<<(ostream& os, const Tile& t);
+ostream& operator<<(ostream& os, const Location& l);
 // ================= MODULE 4: Cottage (aggregation of Location array) =================
 class Cottage {
     DynamicArray<Location> locations;      // earlier raw DMA: Location* locations = new Location[7];

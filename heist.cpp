@@ -1,4 +1,144 @@
+// ================= Exception classes =================
+GameException::GameException(const string& t, const string& m, int p, bool u) : type(t), message(m), penalty(p), usesTurn(u) {}
+GameException::~GameException() {}
+string GameException::getType() const { return type; }
+string GameException::getMessage() const { return message; }
+int GameException::getPenalty() const { return penalty; }
+bool GameException::consumesTurn() const { return usesTurn; }
+InvalidInputException::InvalidInputException(const string& m) : GameException("InvalidInputException", m, 0, false) {}
+InvalidPositionException::InvalidPositionException(const string& m) : GameException("InvalidPositionException", m, 0, false) {}
+SlotFilledException::SlotFilledException(const string& m) : GameException("SlotFilledException", m, 0, false) {}
+WrongLetterException::WrongLetterException(const string& m) : GameException("WrongLetterException", m, 0, false) {}
+RackFullException::RackFullException(const string& m) : GameException("RackFullException", m, 0, false) {}
+RackEmptyException::RackEmptyException(const string& m) : GameException("RackEmptyException", m, 0, false) {}
+WordNotReadyException::WordNotReadyException(const string& m) : GameException("WordNotReadyException", m, 0, false) {}
+FileException::FileException(const string& m) : GameException("FileException", m, 0, false) {}
+InvalidWordException::InvalidWordException(const string& m, int p) : GameException("InvalidWordException", m, p, true) {}
+LowCredibilityException::LowCredibilityException(const string& m, int p) : GameException("LowCredibilityException", m, p, true) {}
+WrongAccusationException::WrongAccusationException(const string& m, int p) : GameException("WrongAccusationException", m, p, true) {}
 
+// ================= Helper functions =================
+char toUpperChar(char c) {
+    if (c >= 'a' && c <= 'z') return c - 'a' + 'A';
+    return c;
+}
+
+string toUpperString(string s) {
+    for (int i = 0; i < (int)s.size(); i++) s[i] = toUpperChar(s[i]);
+    return s;
+}
+
+string intToText(int n) {                       // number -> text
+    if (n == 0) return "0";
+    string s = "";
+    bool negative = (n < 0);
+    if (negative) n = -n;
+    while (n > 0) { s = char('0' + n % 10) + s; n = n / 10; }
+    if (negative) s = "-" + s;
+    return s;
+}
+
+int textToInt(const string& s) {                // text -> number (used for file values)
+    int value = 0;
+    bool negative = false;
+    for (int i = 0; i < (int)s.size(); i++) {
+        if (s[i] == '-') negative = true;
+        else if (s[i] >= '0' && s[i] <= '9') value = value * 10 + (s[i] - '0');
+    }
+    if (negative) value = -value;
+    return value;
+}
+
+string readLine(const string& prompt) {
+    cout << prompt;
+    string s;
+    if (!getline(cin, s)) {
+        cin.clear();
+        throw InvalidInputException("Input could not be read.");
+    }
+    return s;
+}
+
+int readInt(const string& prompt, int low, int high) {
+    string s = readLine(prompt);
+    if (s.size() == 0 || s.size() > 6)
+        throw InvalidInputException("Please enter a valid number.");
+    int value = 0;
+    for (int i = 0; i < (int)s.size(); i++) {
+        if (s[i] < '0' || s[i] > '9')
+            throw InvalidInputException("Please enter a number, not text.");
+        value = value * 10 + (s[i] - '0');
+    }
+    if (value < low || value > high)
+        throw InvalidInputException("Choice is out of range (" + intToText(low) + " to " + intToText(high) + ").");
+    return value;
+}
+
+bool readYesNo(const string& prompt) {
+    string s = toUpperString(readLine(prompt));
+    if (s == "Y") return true;
+    if (s == "N") return false;
+    throw InvalidInputException("Please answer with Y or N.");
+}
+
+void openFile(ifstream& in, const string& name, bool skipHeader) {
+    in.open(name.c_str());
+    if (!in)
+        throw FileException(name + " not found.");
+    if (skipHeader) { string header; getline(in, header); }
+}
+
+// Reads the next non-empty line of a '|' separated file into fields. Returns false at end of file.
+bool readRow(ifstream& in, string fields[], int minColumns, const string& fileName) {
+    string line;
+    while (getline(in, line)) {
+        if (line.size() > 0 && line[line.size() - 1] == '\r') line.erase(line.size() - 1, 1);
+        if (line.size() == 0) continue;
+        int count = 0;
+        string current = "";
+        for (int i = 0; i < (int)line.size(); i++) {
+            if (line[i] == '|') {
+                if (count < MAX_FIELDS) { fields[count] = current; count++; }
+                current = "";
+            }
+            else current += line[i];
+        }
+        if (count < MAX_FIELDS) { fields[count] = current; count++; }
+        if (count < minColumns)
+            throw FileException(fileName + " is corrupted (too few columns).");
+        return true;
+    }
+    return false;
+}
+
+string fixRole(string role) {                   // "Partner 1" -> "Partner_1"
+    for (int i = 0; i < (int)role.size(); i++) if (role[i] == ' ') role[i] = '_';
+    return role;
+}
+
+int roleColumn(const string& role) {            // which profile column belongs to this role
+    const char* roles[7] = { "Cook", "Guard", "Servant", "Partner_1", "Partner_2", "PA", "Child" };
+    for (int i = 0; i < 7; i++) if (role == roles[i]) return i;
+    return -1;
+}
+
+// ================= Operator overloading =================
+bool operator==(const Clue& a, const Clue& b) {
+    return toUpperChar(a.clueLetter) == toUpperChar(b.clueLetter) && a.cluePosition == b.cluePosition && a.clueRow == b.clueRow;
+}
+
+ostream& operator<<(ostream& os, const Tile& t) {
+    if (t.filled) os << "[" << t.tileLetter << "]";
+    else os << "[ ]";
+    return os;
+}
+
+ostream& operator<<(ostream& os, const Location& l) {
+    os << l.locName;
+    if (l.locSearchFlag) os << " - Searched";
+    else os << " - NOT Searched";
+    return os;
+}
 // ================= Character hierarchy =================
 Character::Character(const string& n, const string& r, const string& nat): characterName(n), characterRole(r), nationality(nat), isCulprit(false), interviewed(false), clueRowChar(WORD_2), letterClueChar(' '), boardPosChar(0) {}
 

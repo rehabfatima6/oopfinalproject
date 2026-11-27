@@ -1,3 +1,8 @@
+#define _CRT_SECURE_NO_WARNINGS
+// heist.cpp - THE LOCKER HEIST: implementation of all classes
+#include "heist.h"
+#include <cstdlib>
+#include <ctime>
 // ================= Exception classes =================
 GameException::GameException(const string& t, const string& m, int p, bool u) : type(t), message(m), penalty(p), usesTurn(u) {}
 GameException::~GameException() {}
@@ -512,6 +517,116 @@ void GameEngine::loadGameData() {
         throw FileException("locations.txt must list exactly 7 locations.");
 }
 
+<<<<<<< HEAD
+=======
+// ================= Welcome Screen =================
+
+void GameEngine::showWelcome() const {
+    cout << "\n==================================================\n";
+    cout << "            T H E   L O C K E R   H E I S T\n";
+    cout << "        A Detective Game backed by OOP Principles\n";
+    cout << "==================================================\n";
+    cout << "A locker hidden behind a bookshelf was robbed during a party.\n";
+    cout << "Eight people were in the cottage. One is the culprit.\n";
+    cout << "Collect letters, reveal two words and name the thief\n";
+    cout << "before your credibility runs out.\n";
+}
+
+
+// ================= Main Menu =================
+
+void GameEngine::runMainMenu() {
+
+    cout << "\n------------ THE LOCKER HEIST - MAIN MENU ------------\n";
+    cout << "  [1] New Game\n";
+    cout << "  [2] View Leader/Score Board\n";
+    cout << "  [3] About\n";
+    cout << "  [4] Rules\n";
+    cout << "  [5] Exit\n";
+
+    int choice = readInt("Choice: ", 1, 5);
+
+    if (choice == 1) {
+        startNewGame();
+    }
+    else if (choice == 2) {
+        if (leaderBoard == NULL)
+            throw FileException("No leader board attached.");
+
+        leaderBoard->display();
+    }
+    else if (choice == 3) {
+        ifstream in;
+        openFile(in, "about.txt", false);
+
+        string line;
+        cout << "\n";
+
+        while (getline(in, line))
+            cout << line << "\n";
+    }
+    else if (choice == 4) {
+        loadRules();
+
+        cout << "\n=============== RULES ===============\n";
+        cout << "Maximum turns        : " << maxTurns << "\n";
+        cout << "Starting credibility : " << startingCredibility << "\n";
+        cout << "Every wrong turn     : -" << wrongTurnPenalty << "\n";
+        cout << "Every wrong word     : -" << wrongWordPenalty << "\n";
+        cout << "Win condition        : " << winCondition << "\n";
+        cout << "Lose condition       : " << loseCondition << "\n";
+        cout << "Viewing the board is free.\n";
+    }
+    else if (choice == 5){
+        state = STATE_EXIT;
+     }
+}
+
+
+// ================= Form Word =================
+
+void GameEngine::formWord() {
+
+    int which = readInt("Which row? [1] Word 1  [2] Word 2 : ", 1, 2 );
+
+    WordRow row = WORD_2;
+
+    if (which == 1)
+        row = WORD_1;
+
+    bool& solved = (row == WORD_1) ? solved1 : solved2;
+
+    if (!scrabble.isRowComplete(row))
+        throw WordNotReadyException("That row is not complete yet.");
+
+    if (solved) {
+        cout << "You already solved that word.\n";
+        return;
+    }
+
+    string typed = readLine("Type the word: ");
+
+    if (!scrabble.checkWord(row, typed))
+        throw InvalidWordException( "'" + toUpperString(typed) + "' is not the correct word.",wrongWordPenalty);
+
+    solved = true;
+    detective.incrementTurns();
+
+    cout << "Correct! " << toUpperString(typed) << " is right.\n";
+
+    if (solved1 && solved2) {
+
+        TileRack evidence =
+            detective.getRack(WORD_1) + detective.getRack(WORD_2);
+
+        cout << "\nBoth words solved. Evidence rack: ";
+        evidence.display();
+
+        cout << "\n" << word1 << " + " << word2 << " = " << culprit->nationality << " -> the " << culpritRole<< " is the culprit!\n";
+    }
+}
+
+>>>>>>> 7728b23b5f13dd5147c77f0fe2db8a5966de996f
 void GameEngine::startNewGame() {
     cout << "\n============ THE LOCKER HEIST - NEW GAME ============\n";
     string name = readLine("Enter detective name: ");
@@ -589,4 +704,91 @@ void GameEngine::interviewPerson() {
     Character* p = characters[pick - 1];
     // requiredCredibility() is virtual: each class gives its own limit (polymorphism)
     collect(p->interviewed, p->characterName, p->getClue(), p->requiredCredibility(), "interviewed", "Interview");
+}
+
+// ================= Accuse a Suspect =================
+void GameEngine::accuseSuspect() {
+    cout << "\n===== Accuse a Suspect =====\n";
+    int number = 0;
+    for (int i = 0; i < characters.size(); i++) {
+        if (characters[i]->isSuspect()) {
+            number++;
+            cout << "[" << number << "] " << *characters[i] << "\n";
+        }
+    }
+
+    int pick = readInt("Pick: ", 1, number);
+    Character* accused = NULL;
+    int seen = 0;
+    for (int i = 0; i < characters.size(); i++) {
+        if (characters[i]->isSuspect()) {
+            seen++;
+            if (seen == pick) accused = characters[i];
+        }
+    }
+
+    cout << "Accuse: " << accused->characterName << " (" << accused->characterRole << ")\n";
+    if (!accused->isCulprit)
+        throw WrongAccusationException(accused->characterName + " is innocent!", wrongTurnPenalty);
+
+    detective.incrementTurns();
+    cout << accused->characterName << " is the culprit!\n";
+    state = STATE_WON;
+}
+
+// ================= Conclude Game =================
+void GameEngine::concludeGame() {
+    bool won = (state == STATE_WON);
+    int turnsLeft = maxTurns - detective.getTurns();
+    if (turnsLeft < 0) turnsLeft = 0;
+
+    cout << "\n+-------------------------------------------------------+\n";
+    cout << "  " << detective.getName() << (won ? " WIN!" : " LOSE!") << "\n";
+    cout << "  Final credibility: " << detective.getCredibility() << " || Turns used: " << detective.getTurns()
+         << " || Culprit: " << culpritRole << " " << culprit->characterName << "\n";
+    cout << "+-------------------------------------------------------+\n";
+
+    state = STATE_MENU;
+    if (leaderBoard != NULL)
+        leaderBoard->addScore(detective.getName(), won ? "WIN" : "LOSE", detective.getCredibility(), turnsLeft, culpritRole);
+
+    cout << "\nPress Enter to continue...";
+    string dummy;
+    getline(cin, dummy);
+    system("cls");
+    cout << "Screen Cleared!\n";
+}
+
+// ================= Exception handling =================
+void GameEngine::handleException(const GameException& e) {
+    cout << "\n[!] " << e.getType() << ": " << e.getMessage() << "\n";
+    if (state == STATE_PLAYING) {
+        if (e.getPenalty() > 0) {
+            detective.loseCredibility(e.getPenalty());
+            cout << "    Credibility -" << e.getPenalty() << " (now " << detective.getCredibility() << ")\n";
+        }
+        if (e.consumesTurn()) detective.incrementTurns();
+    }
+}
+
+// ================= Game step =================
+void GameEngine::step() {
+    if (state == STATE_MENU) {
+        runMainMenu();
+    }
+    else if (state == STATE_PLAYING) {
+        if (detective.getCredibility() <= 0 || detective.getTurns() >= maxTurns) {
+            state = STATE_LOST;
+        }
+        else {
+            runGameTurn();
+            if (state == STATE_PLAYING &&
+                (detective.getCredibility() <= 0 || detective.getTurns() >= maxTurns)) {
+                state = STATE_LOST;
+            }
+        }
+    }
+
+    if (state == STATE_WON || state == STATE_LOST)
+        concludeGame();
 }

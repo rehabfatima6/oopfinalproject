@@ -88,9 +88,11 @@ string fixRole(string role);
 int roleColumn(const string& role);
 
 // ================= MODULE 11: Operator overloading on structs =================
-bool operator==(const Clue& a, const Clue& b);  // compares letter, position, row
+bool operator==(const Clue& a, const Clue& b);
 ostream& operator<<(ostream& os, const Tile& t);
+istream& operator>>(istream& is, Tile& t);
 ostream& operator<<(ostream& os, const Location& l);
+istream& operator>>(istream& is, Location& l);
 // ================= MODULE 4: Cottage (aggregation of Location array) =================
 class Cottage {
     DynamicArray<Location> locations;      // earlier raw DMA: Location* locations = new Location[7];

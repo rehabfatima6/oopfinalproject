@@ -512,6 +512,113 @@ void GameEngine::loadGameData() {
         throw FileException("locations.txt must list exactly 7 locations.");
 }
 
+// ================= Welcome Screen =================
+
+void GameEngine::showWelcome() const {
+    cout << "\n==================================================\n";
+    cout << "            T H E   L O C K E R   H E I S T\n";
+    cout << "        A Detective Game backed by OOP Principles\n";
+    cout << "==================================================\n";
+    cout << "A locker hidden behind a bookshelf was robbed during a party.\n";
+    cout << "Eight people were in the cottage. One is the culprit.\n";
+    cout << "Collect letters, reveal two words and name the thief\n";
+    cout << "before your credibility runs out.\n";
+}
+
+
+// ================= Main Menu =================
+
+void GameEngine::runMainMenu() {
+
+    cout << "\n------------ THE LOCKER HEIST - MAIN MENU ------------\n";
+    cout << "  [1] New Game\n";
+    cout << "  [2] View Leader/Score Board\n";
+    cout << "  [3] About\n";
+    cout << "  [4] Rules\n";
+    cout << "  [5] Exit\n";
+
+    int choice = readInt("Choice: ", 1, 5);
+
+    if (choice == 1) {
+        startNewGame();
+    }
+    else if (choice == 2) {
+        if (leaderBoard == NULL)
+            throw FileException("No leader board attached.");
+
+        leaderBoard->display();
+    }
+    else if (choice == 3) {
+        ifstream in;
+        openFile(in, "about.txt", false);
+
+        string line;
+        cout << "\n";
+
+        while (getline(in, line))
+            cout << line << "\n";
+    }
+    else if (choice == 4) {
+        loadRules();
+
+        cout << "\n=============== RULES ===============\n";
+        cout << "Maximum turns        : " << maxTurns << "\n";
+        cout << "Starting credibility : " << startingCredibility << "\n";
+        cout << "Every wrong turn     : -" << wrongTurnPenalty << "\n";
+        cout << "Every wrong word     : -" << wrongWordPenalty << "\n";
+        cout << "Win condition        : " << winCondition << "\n";
+        cout << "Lose condition       : " << loseCondition << "\n";
+        cout << "Viewing the board is free.\n";
+    }
+    else if (choice == 5){
+        state = STATE_EXIT;
+     }
+}
+
+
+// ================= Form Word =================
+
+void GameEngine::formWord() {
+
+    int which = readInt("Which row? [1] Word 1  [2] Word 2 : ", 1, 2 );
+
+    WordRow row = WORD_2;
+
+    if (which == 1)
+        row = WORD_1;
+
+    bool& solved = (row == WORD_1) ? solved1 : solved2;
+
+    if (!scrabble.isRowComplete(row))
+        throw WordNotReadyException("That row is not complete yet.");
+
+    if (solved) {
+        cout << "You already solved that word.\n";
+        return;
+    }
+
+    string typed = readLine("Type the word: ");
+
+    if (!scrabble.checkWord(row, typed))
+        throw InvalidWordException( "'" + toUpperString(typed) + "' is not the correct word.",wrongWordPenalty);
+
+    solved = true;
+    detective.incrementTurns();
+
+    cout << "Correct! " << toUpperString(typed) << " is right.\n";
+
+    if (solved1 && solved2) {
+
+        TileRack evidence =
+            detective.getRack(WORD_1) + detective.getRack(WORD_2);
+
+        cout << "\nBoth words solved. Evidence rack: ";
+        evidence.display();
+
+        cout << "\n" << word1 << " + " << word2 << " = " << culprit->nationality << " -> the " << culpritRole<< " is the culprit!\n";
+    }
+}
+
 void GameEngine::startNewGame() {
     cout << "\n============ THE LOCKER HEIST - NEW GAME ============\n";
     string name = readLine("Enter detective name: ");

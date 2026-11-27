@@ -1,3 +1,8 @@
+#define _CRT_SECURE_NO_WARNINGS
+// heist.cpp - THE LOCKER HEIST: implementation of all classes
+#include "heist.h"
+#include <cstdlib>
+#include <ctime>
 // ================= Exception classes =================
 GameException::GameException(const string& t, const string& m, int p, bool u) : type(t), message(m), penalty(p), usesTurn(u) {}
 GameException::~GameException() {}
@@ -696,4 +701,91 @@ void GameEngine::interviewPerson() {
     Character* p = characters[pick - 1];
     // requiredCredibility() is virtual: each class gives its own limit (polymorphism)
     collect(p->interviewed, p->characterName, p->getClue(), p->requiredCredibility(), "interviewed", "Interview");
+}
+
+// ================= Accuse a Suspect =================
+void GameEngine::accuseSuspect() {
+    cout << "\n===== Accuse a Suspect =====\n";
+    int number = 0;
+    for (int i = 0; i < characters.size(); i++) {
+        if (characters[i]->isSuspect()) {
+            number++;
+            cout << "[" << number << "] " << *characters[i] << "\n";
+        }
+    }
+
+    int pick = readInt("Pick: ", 1, number);
+    Character* accused = NULL;
+    int seen = 0;
+    for (int i = 0; i < characters.size(); i++) {
+        if (characters[i]->isSuspect()) {
+            seen++;
+            if (seen == pick) accused = characters[i];
+        }
+    }
+
+    cout << "Accuse: " << accused->characterName << " (" << accused->characterRole << ")\n";
+    if (!accused->isCulprit)
+        throw WrongAccusationException(accused->characterName + " is innocent!", wrongTurnPenalty);
+
+    detective.incrementTurns();
+    cout << accused->characterName << " is the culprit!\n";
+    state = STATE_WON;
+}
+
+// ================= Conclude Game =================
+void GameEngine::concludeGame() {
+    bool won = (state == STATE_WON);
+    int turnsLeft = maxTurns - detective.getTurns();
+    if (turnsLeft < 0) turnsLeft = 0;
+
+    cout << "\n+-------------------------------------------------------+\n";
+    cout << "  " << detective.getName() << (won ? " WIN!" : " LOSE!") << "\n";
+    cout << "  Final credibility: " << detective.getCredibility() << " || Turns used: " << detective.getTurns()
+         << " || Culprit: " << culpritRole << " " << culprit->characterName << "\n";
+    cout << "+-------------------------------------------------------+\n";
+
+    state = STATE_MENU;
+    if (leaderBoard != NULL)
+        leaderBoard->addScore(detective.getName(), won ? "WIN" : "LOSE", detective.getCredibility(), turnsLeft, culpritRole);
+
+    cout << "\nPress Enter to continue...";
+    string dummy;
+    getline(cin, dummy);
+    system("cls");
+    cout << "Screen Cleared!\n";
+}
+
+// ================= Exception handling =================
+void GameEngine::handleException(const GameException& e) {
+    cout << "\n[!] " << e.getType() << ": " << e.getMessage() << "\n";
+    if (state == STATE_PLAYING) {
+        if (e.getPenalty() > 0) {
+            detective.loseCredibility(e.getPenalty());
+            cout << "    Credibility -" << e.getPenalty() << " (now " << detective.getCredibility() << ")\n";
+        }
+        if (e.consumesTurn()) detective.incrementTurns();
+    }
+}
+
+// ================= Game step =================
+void GameEngine::step() {
+    if (state == STATE_MENU) {
+        runMainMenu();
+    }
+    else if (state == STATE_PLAYING) {
+        if (detective.getCredibility() <= 0 || detective.getTurns() >= maxTurns) {
+            state = STATE_LOST;
+        }
+        else {
+            runGameTurn();
+            if (state == STATE_PLAYING &&
+                (detective.getCredibility() <= 0 || detective.getTurns() >= maxTurns)) {
+                state = STATE_LOST;
+            }
+        }
+    }
+
+    if (state == STATE_WON || state == STATE_LOST)
+        concludeGame();
 }

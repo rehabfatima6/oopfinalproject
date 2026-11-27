@@ -1,3 +1,50 @@
+// heist.h - THE LOCKER HEIST: declarations of all classes
+#ifndef HEIST_H
+#define HEIST_H
+
+#include <iostream>
+#include <string>
+#include <fstream>
+using namespace std;
+
+// MODULE 1: Enums and Structs
+
+enum WordRow { WORD_1, WORD_2 };
+
+enum GameState {
+    STATE_MENU,
+    STATE_PLAYING,
+    STATE_WON,
+    STATE_LOST,
+    STATE_EXIT
+};
+
+enum MenuChoice {
+    MENU_NEW_GAME = 1,
+    MENU_LEADERBOARD,
+    MENU_ABOUT,
+    MENU_RULES,
+    MENU_EXIT
+};
+
+struct Tile {
+    char tileLetter;
+    bool filled;
+};
+
+struct Clue {
+    char clueLetter;
+    int cluePosition;
+    WordRow clueRow;
+};
+
+struct Location {
+    string locName;
+    char letterClueLoc;
+    int boardPosLoc;
+    WordRow locRow;
+    bool locSearchFlag;
+};
 // ================= MODULE 7: Exception classes =================
 // penalty = credibility lost, usesTurn = the mistake also costs a turn
 class GameException {
@@ -291,3 +338,5 @@ public:
     void handleException(const GameException& e);
     bool isFinished() const;
 };
+
+#endif

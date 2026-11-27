@@ -517,8 +517,7 @@ void GameEngine::loadGameData() {
         throw FileException("locations.txt must list exactly 7 locations.");
 }
 
-<<<<<<< HEAD
-=======
+
 // ================= Welcome Screen =================
 
 void GameEngine::showWelcome() const {
@@ -626,7 +625,7 @@ void GameEngine::formWord() {
     }
 }
 
->>>>>>> 7728b23b5f13dd5147c77f0fe2db8a5966de996f
+
 void GameEngine::startNewGame() {
     cout << "\n============ THE LOCKER HEIST - NEW GAME ============\n";
     string name = readLine("Enter detective name: ");

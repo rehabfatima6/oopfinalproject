@@ -137,12 +137,56 @@ ostream& operator<<(ostream& os, const Tile& t) {
     else os << "[ ]";
     return os;
 }
+istream& operator>>(istream& is, Tile& t) {
+    char opening, letter, closing;
+
+    if (!(is >> opening)) return is;
+
+    if (opening != '[') {
+        is.setstate(ios::failbit);
+        return is;
+    }
+
+    if (!is.get(letter) || !is.get(closing)) return is;
+
+    if (closing != ']') {
+        is.setstate(ios::failbit);
+        return is;
+    }
+
+    t.tileLetter = (letter == ' ') ? ' ' : toUpperChar(letter);
+    t.filled = (letter != ' ');
+
+    return is;
+}
 
 ostream& operator<<(ostream& os, const Location& l) {
     os << l.locName;
     if (l.locSearchFlag) os << " - Searched";
     else os << " - NOT Searched";
     return os;
+}
+istream& operator>>(istream& is, Location& l) {
+    string name;
+    char letter;
+    int position, row, searched;
+
+    if (is >> name >> letter >> position >> row >> searched) {
+
+        if ((row != 0 && row != 1) ||
+            (searched != 0 && searched != 1)) {
+            is.setstate(ios::failbit);
+            return is;
+        }
+
+        l.locName = name;
+        l.letterClueLoc = toUpperChar(letter);
+        l.boardPosLoc = position;
+        l.locRow = static_cast<WordRow>(row);
+        l.locSearchFlag = (searched == 1);
+    }
+
+    return is;
 }
 // ================= Character hierarchy =================
 Character::Character(const string& n, const string& r, const string& nat): characterName(n), characterRole(r), nationality(nat), isCulprit(false), interviewed(false), clueRowChar(WORD_2), letterClueChar(' '), boardPosChar(0) {}
@@ -166,7 +210,17 @@ ostream& operator<<(ostream& os, const Character& c) {
     os << c.characterName << " (" << c.characterRole << ", " << c.nationality << ")";
     return os;
 }
+istream& operator>>(istream& is, Character& c) {
+    string name, role, nationality;
 
+    if (is >> name >> role >> nationality) {
+        c.characterName = name;
+        c.characterRole = role;
+        c.nationality = nationality;
+    }
+
+    return is;
+}
 Victim::Victim(const string& n, const string& r, const string& nat) : Character(n, r, nat) {}
 void Victim::display() const { cout << "Victim: " << *this << "\n"; }
 int Victim::requiredCredibility() const { return 80; }
@@ -299,7 +353,21 @@ ostream& operator<<(ostream& os, const Scrabble& s) {
     os << "\n";
     return os;
 }
+istream& operator>>(istream& is, Scrabble& s) {
+    string word1, word2;
 
+    if (is >> word1 >> word2) {
+
+        if (word1.size() != 7 || word2.size() != 8) {
+            is.setstate(ios::failbit);
+            return is;
+        }
+
+        s.setTargets(word1, word2);
+    }
+
+    return is;
+}
 // ================= TileRack =================
 TileRack::TileRack(int cap) : letters(cap), capacity(cap) {}
 TileRack::TileRack(const TileRack& o) : letters(o.letters), capacity(o.capacity) {}

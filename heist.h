@@ -172,6 +172,7 @@ public:
     bool isRowComplete(WordRow r) const;
     bool checkWord(WordRow r, const string& w) const;
     friend ostream& operator<<(ostream& os, const Scrabble& s);
+    friend istream& operator>>(istream& is, Scrabble& s);
 };
 
 // ================= MODULE 5: TileRack =================
@@ -198,6 +199,7 @@ protected:
     string nationality;
     bool isCulprit;
     bool interviewed;
+private:
     WordRow clueRowChar;
     char letterClueChar;
     int boardPosChar;
@@ -211,6 +213,7 @@ public:
     void setClue(char letter, int pos);
     Clue getClue() const;
     friend ostream& operator<<(ostream& os, const Character& c);
+    friend istream& operator>>(istream& is, Character& c);
     friend class GameEngine;                                   // MODULE 11: friend class
 };
 
@@ -252,11 +255,13 @@ public:
 class Partner : public BusinessRelations {
 public:
     Partner(const string& n, const string& r, const string& nat);
+    void display() const override;
 };
 
 class Child : public CloseRelations {
 public:
     Child(const string& n, const string& r, const string& nat);
+    void display() const override;
 };
 
 class PA : public BusinessRelations, public CloseRelations {   // the diamond
@@ -266,9 +271,9 @@ public:
     int requiredCredibility() const;
 };
 
-class Cook : public HouseHelp { public: Cook(const string& n, const string& r, const string& nat); };
-class Guard : public HouseHelp { public: Guard(const string& n, const string& r, const string& nat); };
-class Servant : public HouseHelp { public: Servant(const string& n, const string& r, const string& nat); };
+class Cook : public HouseHelp { public: Cook(const string& n, const string& r, const string& nat);void display() const override; };
+class Guard : public HouseHelp { public: Guard(const string& n, const string& r, const string& nat); void display() const override;};
+class Servant : public HouseHelp { public: Servant(const string& n, const string& r, const string& nat);void display() const override; };
 class Detective : public Character {
     int credibility;
     int turns;                                  // the engine increments, the detective only stores

@@ -190,7 +190,25 @@ istream& operator>>(istream& is, Location& l) {
 }
 // ================= Character hierarchy =================
 Character::Character(const string& n, const string& r, const string& nat): characterName(n), characterRole(r), nationality(nat), isCulprit(false), interviewed(false), clueRowChar(WORD_2), letterClueChar(' '), boardPosChar(0) {}
+void Partner::display() const {
+    cout << "Business Partner: " << *this << "\n";
+}
 
+void Child::display() const {
+    cout << "Owner's Child: " << *this << "\n";
+}
+
+void Cook::display() const {
+    cout << "Cook: " << *this << "\n";
+}
+
+void Guard::display() const {
+    cout << "Guard: " << *this << "\n";
+}
+
+void Servant::display() const {
+    cout << "Servant: " << *this << "\n";
+}
 Character::~Character() {}
 
 int Character::requiredCredibility() const { return 0; }
@@ -613,6 +631,7 @@ void GameEngine::runMainMenu() {
 
     int choice = readInt("Choice: ", 1, 5);
 
+
     if (choice == 1) {
         startNewGame();
     }
@@ -690,6 +709,7 @@ void GameEngine::formWord() {
         evidence.display();
 
         cout << "\n" << word1 << " + " << word2 << " = " << culprit->nationality << " -> the " << culpritRole<< " is the culprit!\n";
+        cout << "Culprit Name: " << culprit->getName() << "\n";
     }
 }
 
@@ -708,10 +728,15 @@ void GameEngine::startNewGame() {
         for (int i = 0; i < (int)name.size(); i++) if (name[i] == ' ') name[i] = r[0];
     }
     loadRules();
+    cout << "Maximum Turns: " << maxTurns << endl;
+    cout << "Starting Credibility: " << startingCredibility << endl;
+    cout << "Win Condition: " << winCondition << endl;
+    cout << "Lose Condition: " << loseCondition << endl;
     loadGameData();
     detective = Detective(name, startingCredibility);
     state = STATE_PLAYING;
     cout << "A culprit has been secretly chosen. The game begins!\n";
+
 }
 void GameEngine::runGameTurn() {
     cout << "\n";
@@ -724,11 +749,19 @@ void GameEngine::runGameTurn() {
     cout << "--- TURN " << detective.getTurns() + 1 << " ---\n";
     int choice = readInt("Choice: ", 1, 6);
     if (choice == 1) {
+    while (true) {
         cottage.displayLocations();
-        int pick = readInt("Pick: ", 1, cottage.getLocationCount());
+        cout << "[0] Back to Game Menu\n";
+        int pick = readInt("Pick: ", 0, cottage.getLocationCount());
+        if (pick == 0)
+            break;
         int i = pick - 1;
-        collect(cottage.at(i).locSearchFlag, cottage.at(i).locName, cottage.getClue(i), 0, "searched", "Search");
+        int oldTurns = detective.getTurns();
+        collect(cottage.at(i).locSearchFlag, cottage.at(i).locName,cottage.getClue(i), 0, "searched", "Search");
+        if (detective.getTurns() > oldTurns)
+            break;
     }
+}
     else if (choice == 2) interviewPerson();
     else if (choice == 3) {
         cout << "\n" << scrabble;
@@ -760,18 +793,30 @@ void GameEngine::collect(bool& done, const string& name, const Clue& c, int need
     detective.incrementTurns();
 }
 
+
 void GameEngine::interviewPerson() {
-    cout << "\n===== Character Menu =====\n";
-    for (int i = 0; i < characters.size(); i++) {
-        cout << "[" << i + 1 << "] " << *characters[i] << " - ";
-        if (characters[i]->interviewed) cout << "Interviewed\n";
-        else cout << "NOT Interviewed\n";
+    while (true) {
+        cout << "\n===== Character Menu =====\n";
+        for (int i = 0; i < characters.size(); i++) {
+            cout << "[" << i + 1 << "] ";
+            characters[i]->display();
+            if (characters[i]->interviewed)
+                cout << "Interviewed\n";
+            else
+                cout << "NOT Interviewed\n";
+        }
+        cout << "[0] Back to Game Menu\n";
+        int pick = readInt("Pick: ", 0, characters.size());
+        if (pick == 0)
+            break;
+        Character* p = characters[pick - 1];
+        int oldTurns = detective.getTurns();
+        collect(p->interviewed, p->characterName, p->getClue(), p->requiredCredibility(),  "interviewed", "Interview");
+        if (detective.getTurns() > oldTurns)
+            break;
     }
-    int pick = readInt("Pick: ", 1, characters.size());
-    Character* p = characters[pick - 1];
-    // requiredCredibility() is virtual: each class gives its own limit (polymorphism)
-    collect(p->interviewed, p->characterName, p->getClue(), p->requiredCredibility(), "interviewed", "Interview");
 }
+
 
 // ================= Accuse a Suspect =================
 void GameEngine::accuseSuspect() {
@@ -811,8 +856,8 @@ void GameEngine::concludeGame() {
 
     cout << "\n+-------------------------------------------------------+\n";
     cout << "  " << detective.getName() << (won ? " WIN!" : " LOSE!") << "\n";
-    cout << "  Final credibility: " << detective.getCredibility() << " || Turns used: " << detective.getTurns()
-         << " || Culprit: " << culpritRole << " " << culprit->characterName << "\n";
+    cout << "Turns Left: " << turnsLeft << "\n";
+    cout << "  Final credibility: " << detective.getCredibility() << " || Turns used: " << detective.getTurns()  << " || Culprit: " << culpritRole << " " << culprit->characterName << "\n";
     cout << "+-------------------------------------------------------+\n";
 
     state = STATE_MENU;
